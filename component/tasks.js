@@ -1,74 +1,50 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, FlatList, Alert, Platform } from 'react-native';
+
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, FlatList, Alert, StatusBar } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { getDatabase, ref, push, onValue } from 'firebase/database';
-import Exclude from './Exclude';
 import app from '../servicos/firebase';
 import * as Location from 'expo-location';
+import Exclude from './Exclude';
 
 const database = getDatabase(app);
 
-export default function tasks() {
+export default function Tasks() {
+
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
   const [task, setTask] = useState('');
-  const [tasks, setTasks] = useState([]); // Estado para armazenar as tarefas
-  const [city, setCity] = useState('Carregando localização...'); // Estado para armazenar a cidade
+  const [tasks, setTasks] = useState([]);
 
+  // Função para obter a localização
+  const getLocation = async () => {
+    try {
+      const location = await Location.getCurrentPositionAsync({});
+      const lat = location.coords.latitude;
+      const lon = location.coords.longitude;
+      
+      console.log('Latitude:', lat);
+      console.log('Longitude:', lon);
+      
+      setLatitude(lat);
+      setLongitude(lon);
+    } catch (error) {
+      console.error('Erro ao obter a localização', error);
+    }
+  };
+
+  // Solicita permissão e obtém a localização
   useEffect(() => {
-    (async () => {
-      try {
-        if (Platform.OS === 'web') {
-          if (!navigator.geolocation) {
-            setCity('Geolocalização não é suportada no navegador.');
-            return;
-          }
-
-          navigator.geolocation.getCurrentPosition(
-            async (position) => {
-              console.log('Localização obtida (web):', position);
-
-              const [address] = await Location.reverseGeocodeAsync({
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-              });
-
-              console.log('Endereço obtido (web):', address);
-
-              setCity(
-                address?.city || address?.region || address?.country || 'Localização não encontrada'
-              );
-            },
-            (error) => {
-              console.error('Erro ao obter localização (web):', error);
-              setCity('Erro ao obter localização no navegador');
-            }
-          );
-        } else {
-          const { status } = await Location.requestForegroundPermissionsAsync();
-          if (status !== 'granted') {
-            setCity('Permissão negada para acessar localização');
-            return;
-          }
-
-          const locationData = await Location.getCurrentPositionAsync({});
-          console.log('Localização obtida:', locationData);
-
-          const [address] = await Location.reverseGeocodeAsync({
-            latitude: locationData.coords.latitude,
-            longitude: locationData.coords.longitude,
-          });
-
-          console.log('Endereço obtido:', address);
-
-          setCity(
-            address?.city || address?.region || address?.country || 'Localização não encontrada'
-          );
-        }
-      } catch (error) {
-        console.error('Erro ao obter localização:', error);
-        setCity('Erro ao obter localização');
+    const getPermissionAndLocation = async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        getLocation(); // Chama a função para obter a localização
+      } else {
+        console.log('Permissão negada');
       }
-    })();
-  }, []);
+    };
+    
+    getPermissionAndLocation();
+  }, []); // A execução só ocorre uma vez após o componente ser montado
 
   // Função para adicionar a tarefa ao banco de dados
   const addTask = () => {
@@ -109,9 +85,17 @@ export default function tasks() {
 
   return (
     <View style={styles.container}>
-     <Text style={styles.titulo}>Task List</Text>
-     <Text style={styles.city}>Localização: {city}</Text>
-      <br />
+      {/* Exibindo as coordenadas de latitude e longitude */}
+      <Text style={styles.location}>
+        Latitude: {latitude ? latitude : 'Carregando...'}
+      </Text>
+      <Text style={styles.location}>
+        Longitude: {longitude ? longitude : 'Carregando...'}
+      </Text>
+      {/*<MapView style={styles.map} />*/}
+
+      <Text style={styles.titulo}>Task List</Text>
+
       <View style={styles.input}>
         <TextInput
           placeholder="Add a task"
@@ -124,7 +108,7 @@ export default function tasks() {
         </TouchableOpacity>
       </View>
 
-      <FlatList
+      <FlatList 
         data={tasks}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
@@ -164,9 +148,9 @@ const styles = StyleSheet.create({
   titulo: {
     fontSize: 35,
   },
-  city: {
+  location: {
     fontSize: 16,
-    marginBottom: 10,
+    marginTop: 10,
     color: 'gray',
   },
   botao: {
@@ -180,4 +164,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 25,
   },
+  map: {
+    width: '100%',
+    height: '100%',
+  },
+  taskItem: {
+    display: 'flex',
+    flexDirection: 'row',
+    marginTop: '20px',
+    borderbott
+  }
 });
